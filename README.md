@@ -15,7 +15,16 @@ Created by **AbdulRahman-T** (AB).
 
 ## Setup Instructions
 
-### 1. The Frontend (React/Vite)
+### 1. Clone the Repository
+
+If you are downloading this for the first time, use `git clone` (do not use `git pull`):
+
+```bash
+git clone https://github.com/AbdulRahman-T/JARVIS-OS.git
+cd JARVIS-OS
+```
+
+### 2. The Frontend (React/Vite)
 
 Run the frontend locally. Since it uses Vite, it works out-of-the-box using normal Node processes.
 
@@ -42,7 +51,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 > **Note**: This environment variable is for your local deployment. Alternatively, you can use the built-in UI Settings panel on the web interface to input a Custom API Key or switch the API Provider to **OpenRouter** if you prefer running it without environment variables or using an alternative inference provider.
 
-### 3. The Local Backend (OS Control)
+### 4. The Local Backend (OS Control)
 
 To allow the web app to control your computer (opening apps, setting volume), you must run the Python local server.
 
@@ -51,17 +60,33 @@ To allow the web app to control your computer (opening apps, setting volume), yo
    cd backend
    ```
 
-2. Install python dependencies:
+2. Create and activate a Virtual Environment (Highly Recommended to avoid 'externally-managed-environment' errors on macOS/Linux):
    ```bash
-   pip install -r requirements.txt
+   # On macOS/Linux:
+   python3 -m venv venv
+   source venv/bin/activate
+   
+   # On Windows:
+   python -m venv venv
+   venv\Scripts\activate
    ```
 
-3. Run the FastAPI server on port 8000:
+3. Install python dependencies:
    ```bash
+   # Ensure your virtual environment is activated first!
+   pip install -r requirements.txt 
+   ```
+
+4. Run the FastAPI server on port 8000:
+   ```bash
+   # On Windows:
    python main.py
+   
+   # On macOS/Linux:
+   python3 main.py
    ```
 
-### 4. Setting up Ngrok (For tunneling from web to local)
+### 5. Setting up Ngrok (For tunneling from web to local)
 
 Since modern browsers enforce HTTPS and secure contexts, connecting to `localhost:8000` from an HTTPS hosted frontend often requires a tunnel to bridge the traffic securely.
 
