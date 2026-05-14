@@ -555,12 +555,7 @@ export default function App() {
                       },
                       {
                          name: "get_system_stats",
-                         description: "Retrieves current local system stats like CPU and RAM usage via the python backend.",
-                         parameters: {
-                            type: Type.OBJECT,
-                            properties: {},
-                            required: []
-                         }
+                         description: "Retrieves current local system stats like CPU and RAM usage via the python backend."
                       },
                       {
                          name: "move_app_to_display",
@@ -584,7 +579,15 @@ export default function App() {
           console.error("Connect error:", err);
           isConnectingRef.current = false;
           updateStatus("CONNECTION FAILED");
-          addLog(err.message);
+          addLog("API Error: " + err.message);
+          if (err.message?.includes("quota") || err.message?.includes("429")) {
+              addToast("Quota exceeded. Please provide a new API key or use OpenRouter.");
+              addLog("TIP: You can use your own API Key via the UI Settings.");
+          } else if (err.message?.includes("invalid argument")) {
+               addToast("API Provider Error: Please ensure you are using Google GenAI or check your key.");
+          } else {
+              addToast("Failed to connect. Check API key and settings.");
+          }
       }
   };
 
