@@ -1,0 +1,8 @@
+{
+  "name": "JARVIS-OS",
+  "description": "A cinematic, open-source JARVIS-style HUD with vision mode, local OS control backend, and deep voice integration. Built for local execution mapping to Python OS tools. Created by AbdulRahman-T.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
