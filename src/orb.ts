@@ -1,5 +1,38 @@
 import * as THREE from 'three';
 
+export type OrbTheme = 'cyan' | 'white' | 'red' | 'amber';
+
+export const THEME_COLORS = {
+  cyan: {
+    core: '#0ea5e9',
+    ring: '#38bdf8',
+    base: '#0284c7',
+    highlight: '#7dd3fc',
+    bg: '#050508'
+  },
+  white: {
+    core: '#e5e5e5',
+    ring: '#ffffff',
+    base: '#a3a3a3',
+    highlight: '#ffffff',
+    bg: '#000000'
+  },
+  red: {
+    core: '#ef4444',
+    ring: '#f87171',
+    base: '#b91c1c',
+    highlight: '#fca5a5',
+    bg: '#080000'
+  },
+  amber: {
+    core: '#f59e0b',
+    ring: '#fbbf24',
+    base: '#d97706',
+    highlight: '#fde68a',
+    bg: '#080500'
+  }
+};
+
 export class ParticleOrb {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
@@ -12,8 +45,12 @@ export class ParticleOrb {
   
   targetScale: number = 1.0;
   currentScale: number = 1.0;
+  theme: OrbTheme = 'cyan';
   
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, initialTheme: OrbTheme = 'cyan') {
+    this.theme = initialTheme;
+    const colors = THEME_COLORS[this.theme];
+    
     this.scene = new THREE.Scene();
     
     // Set up camera
@@ -28,7 +65,7 @@ export class ParticleOrb {
     // 1. Core glowing sphere
     const coreGeometry = new THREE.SphereGeometry(1.2, 32, 32);
     const coreMaterial = new THREE.MeshBasicMaterial({ 
-        color: new THREE.Color('#0ea5e9'), 
+        color: new THREE.Color(colors.core), 
         transparent: true, 
         opacity: 0.15,
         blending: THREE.AdditiveBlending 
@@ -40,7 +77,7 @@ export class ParticleOrb {
     for (let i = 0; i < 3; i++) {
         const ringGeo = new THREE.TorusGeometry(2 + i*0.4, 0.015, 16, 100);
         const ringMat = new THREE.MeshBasicMaterial({ 
-            color: new THREE.Color('#38bdf8'), 
+            color: new THREE.Color(colors.ring), 
             transparent: true, 
             opacity: 0.3 - (i*0.1),
             blending: THREE.AdditiveBlending
@@ -56,11 +93,11 @@ export class ParticleOrb {
     const particleCount = 4000;
     this.geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
+    const colorArray = new Float32Array(particleCount * 3);
     const sizes = new Float32Array(particleCount);
 
-    const baseColor = new THREE.Color('#0284c7');
-    const highlightColor = new THREE.Color('#7dd3fc');
+    const baseColor = new THREE.Color(colors.base);
+    const highlightColor = new THREE.Color(colors.highlight);
 
     for (let i = 0; i < particleCount; i++) {
         const r = 1.8 + Math.random() * 0.5; 
@@ -78,15 +115,15 @@ export class ParticleOrb {
         const isHighlight = Math.random() > 0.8;
         const c = isHighlight ? highlightColor : baseColor;
 
-        colors[i * 3] = c.r;
-        colors[i * 3 + 1] = c.g;
-        colors[i * 3 + 2] = c.b;
+        colorArray[i * 3] = c.r;
+        colorArray[i * 3 + 1] = c.g;
+        colorArray[i * 3 + 2] = c.b;
 
         sizes[i] = Math.random() * 2;
     }
 
     this.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    this.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    this.geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
     this.geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
     const canvasTexture = document.createElement('canvas');
@@ -121,6 +158,28 @@ export class ParticleOrb {
     
     // Start loop
     this.animate();
+  }
+
+  setTheme(newTheme: OrbTheme) {
+    this.theme = newTheme;
+    const colors = THEME_COLORS[newTheme];
+    
+    (this.coreMesh.material as THREE.MeshBasicMaterial).color.set(colors.core);
+    
+    this.rings.forEach(ring => {
+        (ring.material as THREE.MeshBasicMaterial).color.set(colors.ring);
+    });
+
+    const baseColor = new THREE.Color(colors.base);
+    const highlightColor = new THREE.Color(colors.highlight);
+    const colorAttribute = this.geometry.getAttribute('color') as THREE.BufferAttribute;
+
+    for (let i = 0; i < colorAttribute.count; i++) {
+        const isHighlight = Math.random() > 0.8;
+        const c = isHighlight ? highlightColor : baseColor;
+        colorAttribute.setXYZ(i, c.r, c.g, c.b);
+    }
+    colorAttribute.needsUpdate = true;
   }
 
   onWindowResize() {

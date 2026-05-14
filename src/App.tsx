@@ -92,6 +92,12 @@ export default function App() {
   const [localServerUrl, setLocalServerUrl] = useState<string>("http://localhost:8000");
   const [isLocalConnected, setIsLocalConnected] = useState<boolean>(false);
   const [showToasts, setShowToasts] = useState<boolean>(true);
+  
+  // Custom API & Theme state
+  const [orbTheme, setOrbTheme] = useState<"cyan" | "white" | "red" | "amber">("cyan");
+  const [apiProvider, setApiProvider] = useState<"google" | "openrouter">("google");
+  const [customApiKey, setCustomApiKey] = useState<string>("");
+
   const [toasts, setToasts] = useState<{id: string, msg: string}[]>([]);
 
   const addToast = (msg: string) => {
@@ -117,6 +123,9 @@ export default function App() {
             if (data.showToasts !== undefined) setShowToasts(data.showToasts);
             if (data.clapSensitivity) setClapSensitivity(data.clapSensitivity);
             if (data.idleTimeout) setIdleTimeout(data.idleTimeout);
+            if (data.orbTheme) setOrbTheme(data.orbTheme);
+            if (data.apiProvider) setApiProvider(data.apiProvider);
+            if (data.customApiKey !== undefined) setCustomApiKey(data.customApiKey);
             addLog("System settings restored.");
         } catch(e) {
             console.error("Failed to load settings", e);
@@ -133,7 +142,10 @@ export default function App() {
           autoApproveTools,
           showToasts,
           clapSensitivity,
-          idleTimeout
+          idleTimeout,
+          orbTheme,
+          apiProvider,
+          customApiKey
       };
       localStorage.setItem('jarvis_settings', JSON.stringify(settings));
       addLog("External cache updated. Settings saved.");
@@ -160,6 +172,9 @@ export default function App() {
           setShowToasts(true);
           setClapSensitivity(85);
           setIdleTimeout(5);
+          setOrbTheme("cyan");
+          setApiProvider("google");
+          setCustomApiKey("");
           addLog("System reset to factory defaults.");
           setShowSettings(false);
       }
@@ -236,9 +251,17 @@ export default function App() {
   // Initialization: fetch key
   useEffect(() => {
     if (canvasRef.current && !orbRef.current) {
-      orbRef.current = new ParticleOrb(canvasRef.current);
+      orbRef.current = new ParticleOrb(canvasRef.current, orbTheme);
     }
   }, []);
+
+  useEffect(() => {
+     if (orbRef.current) {
+         orbRef.current.setTheme(orbTheme);
+     }
+     document.documentElement.style.setProperty('--color-brand-cyan', orbTheme === 'white' ? '#e5e5e5' : orbTheme === 'red' ? '#ef4444' : orbTheme === 'amber' ? '#f59e0b' : '#0ea5e9');
+     document.documentElement.style.setProperty('--color-brand-bg', orbTheme === 'white' ? '#000000' : orbTheme === 'red' ? '#080000' : orbTheme === 'amber' ? '#080500' : '#050508');
+  }, [orbTheme]);
 
   const processAudioData = (e: AudioProcessingEvent) => {
     if (!sessionRef.current) return;
@@ -363,17 +386,26 @@ export default function App() {
       stopPlayback();
       try {
           updateStatus("INITIALIZING AI...");
-          const res = await fetch('/api/config');
-          const configData = await res.json();
-          const apiKey = configData.geminiApiKey;
+          let finalApiKey = customApiKey;
+          if (!finalApiKey) {
+              const res = await fetch('/api/config');
+              const configData = await res.json();
+              finalApiKey = configData.geminiApiKey;
+          }
           
-          if (!apiKey) {
+          if (!finalApiKey) {
               updateStatus("API KEY MISSING");
-              addLog("Failed to connect: missing GEMINI_API_KEY");
+              addLog("Failed to connect: API Key missing");
+              isConnectingRef.current = false;
               return;
           }
 
-          const ai = new GoogleGenAI({ apiKey });
+          const genAIConfig: any = { apiKey: finalApiKey };
+          if (apiProvider === 'openrouter') {
+              genAIConfig.httpOptions = { baseUrl: 'https://openrouter.ai/api/v1' };
+              addLog("Using OpenRouter endpoint");
+          }
+          const ai = new GoogleGenAI(genAIConfig);
           aiRef.current = ai;
           
           const sessionPromise = ai.live.connect({ 
@@ -1036,6 +1068,23 @@ export default function App() {
                       </select>
                    </div>
 
+                   <div className="flex sm:flex-row flex-col justify-between sm:items-center items-start gap-3">
+                      <div className="flex flex-col">
+                          <span className="text-zinc-200 font-mono text-sm">Orb Theme</span>
+                          <span className="text-zinc-500 font-mono text-[10px]">Visual colors of the app</span>
+                      </div>
+                      <select 
+                          value={orbTheme}
+                          onChange={(e: any) => setOrbTheme(e.target.value)}
+                          className="w-full sm:w-auto bg-brand-bg/60 border border-brand-cyan/30 text-brand-cyan text-xs font-mono p-2 rounded outline-none focus:border-brand-cyan"
+                      >
+                          <option value="cyan">Cyan (Default)</option>
+                          <option value="white">White / Monochrome</option>
+                          <option value="red">Red (Sentinel)</option>
+                          <option value="amber">Amber (Retro)</option>
+                      </select>
+                   </div>
+
                    <div className="flex justify-between items-center">
                       <div className="flex flex-col">
                           <span className="text-zinc-200 font-mono text-sm">Auto-Approve Actions</span>
@@ -1047,6 +1096,39 @@ export default function App() {
                       >
                           <div className={`w-4 h-4 rounded-full transition-transform ${autoApproveTools ? 'bg-black translate-x-6' : 'bg-zinc-500 translate-x-0'}`} />
                       </button>
+                   </div>
+
+                   <hr className="border-brand-cyan/20 my-2" />
+
+                   <div className="flex flex-col gap-2">
+                       <div className="flex sm:flex-row flex-col justify-between sm:items-center items-start gap-3">
+                          <div className="flex flex-col">
+                              <span className="text-zinc-200 font-mono text-sm">Target API Provider</span>
+                              <span className="text-zinc-500 font-mono text-[10px]">Fallback or custom API Host</span>
+                          </div>
+                          <select 
+                              value={apiProvider}
+                              onChange={(e: any) => setApiProvider(e.target.value)}
+                              className="w-full sm:w-auto bg-brand-bg/60 border border-brand-cyan/30 text-brand-cyan text-xs font-mono p-2 rounded outline-none focus:border-brand-cyan"
+                          >
+                              <option value="google">Google GenAI (Direct)</option>
+                              <option value="openrouter">OpenRouter (Experimental)</option>
+                          </select>
+                       </div>
+                   </div>
+
+                   <div className="flex flex-col gap-2 mb-2">
+                       <div className="flex flex-col">
+                          <span className="text-zinc-200 font-mono text-sm">Custom API Key (Optional)</span>
+                          <span className="text-zinc-500 font-mono text-[10px]">Overrides the environment key</span>
+                       </div>
+                       <input 
+                          type="password" 
+                          value={customApiKey}
+                          onChange={(e) => setCustomApiKey(e.target.value)}
+                          className="w-full bg-brand-bg/60 border border-brand-cyan/30 text-brand-cyan text-xs font-mono p-2 rounded outline-none focus:border-brand-cyan"
+                          placeholder="sk-or-v1-..."
+                       />
                    </div>
 
                    <hr className="border-brand-cyan/20 my-2" />

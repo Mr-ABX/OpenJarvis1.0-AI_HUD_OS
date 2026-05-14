@@ -40,6 +40,8 @@ GEMINI_API_KEY=your_gemini_api_key_here
 ```
 *(Get one for free at Google AI Studio)*
 
+> **Note**: This environment variable is for your local deployment. Alternatively, you can use the built-in UI Settings panel on the web interface to input a Custom API Key or switch the API Provider to **OpenRouter** if you prefer running it without environment variables or using an alternative inference provider.
+
 ### 3. The Local Backend (OS Control)
 
 To allow the web app to control your computer (opening apps, setting volume), you must run the Python local server.
