@@ -8,7 +8,8 @@ Created by **AbdulRahman-T** (AB).
 
 - **Gemini Live API Integration**: Real-time voice and vision with the deepest, most mature available AI voice (`Charon` as default).
 - **Vision Mode**: Accesses webcam to "see" your environment and describe it.
-- **Local OS Backend Backend**: Python local server allowing JARVIS to complete desktop requests (e.g. open apps, adjust volume, and send notifications).
+- **Local OS Backend Backend**: Python local server allowing JARVIS to complete desktop requests (e.g. open apps, adjust volume, send notifications, fetch OS stats, move apps between displays).
+- **Live Widgets & Tools**: JARVIS can natively fetch the latest World News and real-time Weather.
 - **Cinematic UI**: Custom particle orb reacting to audio levels, scanlines, crosshairs, and real-time logs.
 - **Persistent Settings**: Customize names, titles, idle timeouts, local backend connections, and more directly from the UI.
 - **Responsive Interface**: Settings and visuals resize effectively for different devices.

@@ -449,7 +449,8 @@ export default function App() {
 
                      if (message.toolCall?.functionCalls) {
                          const call = message.toolCall.functionCalls[0];
-                         if (call.name === "open_website" || call.name === "open" || call.name === "send_notification" || call.name === "set_volume") {
+                         const osTools = ["open_website", "open", "send_notification", "set_volume", "get_news", "get_weather", "get_system_stats", "move_app_to_display"];
+                         if (osTools.includes(call.name)) {
                              if (autoApproveToolsRef.current) {
                                  addLog(`OS Tool auto-approved: ${call.name}`);
                                  executeTool(call.id, call.name, call.args, "approve");
@@ -481,7 +482,7 @@ export default function App() {
                         prebuiltVoiceConfig: { voiceName: voiceNameRef.current }
                     }
                 },
-                systemInstruction: { parts: [{ text: `You are ${(voiceNameRef.current === 'Fenrir' || voiceNameRef.current === 'Charon') ? 'J.A.R.V.I.S.' : 'F.R.I.D.A.Y.'}, a real-time AI assistant. My name is ${userNameRef.current} and you can call me by these titles: ${userTitlesRef.current}. Be highly concise, use short sentences. If you're asked to open a website, call the relevant tool. If asked to "play" a song or video on YouTube, construct the url exactly as 'https://www.google.com/search?btnI=1&q=site:youtube.com+<query>' for the open_website tool; you must explicitly tell the user that you are using Google's "I'm Feeling Lucky" feature to automatically redirect and play the first YouTube result without requiring them to click. If asked to open a desktop app, use the 'open' tool. If asked to set or change volume, use the 'set_volume' tool. If asked to send a notification, use the 'send_notification' tool.` }]},
+                systemInstruction: { parts: [{ text: `You are ${(voiceNameRef.current === 'Fenrir' || voiceNameRef.current === 'Charon') ? 'J.A.R.V.I.S.' : 'F.R.I.D.A.Y.'}, a real-time AI assistant. My name is ${userNameRef.current} and you can call me by these titles: ${userTitlesRef.current}. Be highly concise, use short sentences. If you're asked to open a website, call the relevant tool. If asked to "play" a song or video on YouTube, construct the url exactly as 'https://www.google.com/search?btnI=1&q=site:youtube.com+<query>' for the open_website tool; you must explicitly tell the user that you are using Google's "I'm Feeling Lucky" feature to automatically redirect and play the first YouTube result without requiring them to click. If asked to open a desktop app, use the 'open' tool. If asked to set or change volume, use the 'set_volume' tool. If asked to send a notification, use the 'send_notification' tool. If you are asked for the latest news, use the 'get_news' tool. If asked for weather, use 'get_weather'. If asked for system stats/usage, use 'get_system_stats'. If asked to move an app to the second display, use 'move_app_to_display'.` }]},
                 tools: [{
                    functionDeclarations: [
                       {
@@ -528,6 +529,48 @@ export default function App() {
                                body: { type: Type.STRING, description: "Body text of the notification." }
                             },
                             required: ["title", "body"]
+                         }
+                      },
+                      {
+                         name: "get_news",
+                         description: "Fetches the latest news headlines based on a topic.",
+                         parameters: {
+                            type: Type.OBJECT,
+                            properties: {
+                               topic: { type: Type.STRING, description: "Topic to search for, e.g., 'technology', 'world', etc." }
+                            },
+                            required: ["topic"]
+                         }
+                      },
+                      {
+                         name: "get_weather",
+                         description: "Fetches current weather for a specified location.",
+                         parameters: {
+                            type: Type.OBJECT,
+                            properties: {
+                               location: { type: Type.STRING, description: "The location to get weather for." }
+                            },
+                            required: ["location"]
+                         }
+                      },
+                      {
+                         name: "get_system_stats",
+                         description: "Retrieves current local system stats like CPU and RAM usage via the python backend.",
+                         parameters: {
+                            type: Type.OBJECT,
+                            properties: {},
+                            required: []
+                         }
+                      },
+                      {
+                         name: "move_app_to_display",
+                         description: "Attempts to move a specific application to the second display on macOS.",
+                         parameters: {
+                            type: Type.OBJECT,
+                            properties: {
+                               app_name: { type: Type.STRING, description: "The name of the application to move." }
+                            },
+                            required: ["app_name"]
                          }
                       }
                    ]

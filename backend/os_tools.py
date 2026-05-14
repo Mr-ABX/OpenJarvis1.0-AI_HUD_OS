@@ -40,6 +40,69 @@ def execute_os_command(command_type: str, target: str):
             elif system == "Windows":
                 subprocess.Popen(["start", url], shell=True)
             return f"Searching '{target}' on YouTube."
+        elif command_type == "get_news":
+            try:
+                from duckduckgo_search import DDGS
+                with DDGS() as ddgs:
+                    results = [r for r in ddgs.news(target if target else "world news", max_results=5)]
+                    if results:
+                        response = "Latest News:\n"
+                        for r in results:
+                            response += f"- {r.get('title')}: {r.get('body')}\n"
+                        return response
+                    return "No news found."
+            except Exception as e:
+                return f"Error fetching news: {str(e)}"
+        elif command_type == "get_weather":
+            try:
+                import requests
+                # Convert target to JSON if needed, or target might just be string
+                location = target
+                try:
+                    import json
+                    args = json.loads(target)
+                    location = args.get("location", target)
+                except:
+                    pass
+                url = f"https://wttr.in/{location}?format=%l:+%C+%t+(feels+like+%f).+Wind:+%w,+Hum:+%h"
+                resp = requests.get(url, timeout=5)
+                if resp.status_code == 200:
+                    return resp.text
+                return f"Could not fetch weather for {location}"
+            except Exception as e:
+                return f"Weather error: {str(e)}"
+        elif command_type == "get_system_stats":
+            try:
+                import psutil
+                cpu = psutil.cpu_percent(interval=0.5)
+                ram = psutil.virtual_memory()
+                return f"System Stats - CPU Usage: {cpu}%. RAM Usage: {ram.percent}% ({ram.used // (1024**3)}GB / {ram.total // (1024**3)}GB)."
+            except Exception as e:
+                return f"System stats error (ensure psutil is installed): {str(e)}"
+        elif command_type == "move_app_to_display":
+            # For MacOS only we use AppleScript rough approximation
+            if system == "Darwin":
+                try:
+                    import json
+                    args = json.loads(target)
+                    app_name = args.get("app_name", "")
+                except:
+                    app_name = target
+                
+                # AppleScript to try to move the window. Extremely brittle natively, so we give a best effort or tell the user.
+                script = f'''
+                tell application "System Events"
+                    if exists (processes where name is "{app_name}") then
+                        tell process "{app_name}"
+                            set position of window 1 to {{1920, 0}}
+                        end tell
+                    end if
+                end tell
+                '''
+                subprocess.Popen(["osascript", "-e", script])
+                return f"Attempted to move {app_name} to second display (Requires Accessibility Permissions and fixed coordinates)."
+            return "Display move not natively supported easily on this OS without extra tools like Yabai or specific Windows commands."
+
     except Exception as e:
         return f"Failed to execute command: {str(e)}"
     return "Command not recognized."
