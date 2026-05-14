@@ -19,7 +19,7 @@ async function startServer() {
   
   const wss = new WebSocketServer({ server, path: '/ws/voice' });
 
-  const apiKey = process.env.GEMINI_API_KEY || "AIzaSyCCt1kFjm-9Hd82W_2Cdss1w1HbDw1BeT8";
+  const apiKey = process.env.GEMINI_API_KEY;
   let ai: GoogleGenAI | null = null;
   if (apiKey) {
       ai = new GoogleGenAI({ apiKey });
@@ -73,7 +73,7 @@ AI: [Your spoken response here]`;
     const generateAndSendTTS = async (text: string, voiceName: string, isWakeWord: boolean = false) => {
         try {
             // Option 1: Deepgram TTS (Requires DEEPGRAM_API_KEY)
-            const deepgramKey = process.env.DEEPGRAM_API_KEY || "ba328d25d4b12707d0c53ad2c9b1f4cb11e9038c";
+            const deepgramKey = process.env.DEEPGRAM_API_KEY;
             if (deepgramKey) {
                 const dgVoice = voiceName === 'Fenrir' ? 'aura-orion-en' : 'aura-asteria-en';
                 const dgRes = await fetch(`https://api.deepgram.com/v1/speak?model=${dgVoice}`, {
