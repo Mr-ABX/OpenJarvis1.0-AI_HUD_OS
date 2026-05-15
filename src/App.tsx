@@ -903,6 +903,7 @@ export default function App() {
              analyser.fftSize = 512;
              const bufferLength = analyser.frequencyBinCount;
              const dataArray = new Uint8Array(bufferLength);
+             let energyHistory: number[] = [];
 
              const checkClap = () => {
                  if (isDestroyed) return;
@@ -914,16 +915,31 @@ export default function App() {
                      if (val > max) max = val;
                      sum += val;
                  }
-                 const avg = sum / bufferLength;
+                 const currentEnergy = sum / bufferLength;
                  
-                 // High transient ratio means a sharp sound like a clap/snap vs continuous speech
-                 const isTransient = max / (avg + 1) > 6.0;
+                 energyHistory.push(currentEnergy);
+                 if (energyHistory.length > 20) energyHistory.shift();
                  
-                 // threshold for loud transient
-                 if (max > clapSensitivityRef.current && isTransient) {
+                 let bgNoise = 0;
+                 if (energyHistory.length > 1) {
+                     for (let i = 0; i < energyHistory.length - 1; i++) {
+                         bgNoise += energyHistory[i];
+                     }
+                     bgNoise /= (energyHistory.length - 1);
+                 } else {
+                     bgNoise = currentEnergy;
+                 }
+                 
+                 // Robust spike detection: Compare energy to recent history
+                 const isSpike = currentEnergy > (bgNoise + 2) * 2.5 && max > clapSensitivityRef.current;
+                 
+                 // Sharp peak in the current frame
+                 const isTransient = max / (currentEnergy + 0.1) > 2.5;
+                 
+                 if (isSpike && isTransient) {
                      const now = Date.now();
                      if (now - lastClapTime > 200 && now - lastClapTime < 800) {
-                         addLog("Double clap detected.");
+                         addLog("Double clap detected. Waking system...");
                          connectLiveAPI(true);
                          return; // Stop checking
                      } else if (now - lastClapTime > 800) {
