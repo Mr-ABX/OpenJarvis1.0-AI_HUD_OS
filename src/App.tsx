@@ -1079,25 +1079,27 @@ export default function App() {
         
         <div className="flex justify-between items-start">
           <div className="flex flex-col gap-1">
-            <h1 className="text-brand-cyan tracking-[0.5em] font-medium text-xl uppercase">
+            <h1 className="text-brand-cyan tracking-[0.4em] font-bold text-2xl uppercase drop-shadow-[0_0_10px_rgba(14,165,233,0.4)]">
                {(voiceName === 'Fenrir' || voiceName === 'Charon') ? 'J.A.R.V.I.S.' : 'F.R.I.D.A.Y.'}
             </h1>
-            <div className="flex flex-col gap-2 mt-2">
+            <div className="flex flex-col gap-2 mt-3 font-mono text-[10px]">
                 <div className="flex items-center gap-2">
-                   <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                   <span className="text-xs tracking-widest opacity-60">LINK: {isConnected ? 'SECURE' : 'DISCONNECTED'}</span>
-                   {isConnected && <span className="text-[10px] text-brand-cyan ml-2 font-mono border border-brand-cyan/30 px-1 rounded bg-brand-cyan/10">{latency}ms</span>}
+                   <div className={`w-[6px] h-[6px] rounded-full ${isConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse' : 'bg-red-500'}`} />
+                   <span className="tracking-[0.2em] opacity-50 uppercase">Link State:</span>
+                   <span className={`tracking-widest font-medium ${isConnected ? 'text-green-400' : 'text-red-400'}`}>{isConnected ? 'SECURE' : 'DISCONNECTED'}</span>
+                   {isConnected && <span className="text-[10px] text-brand-cyan ml-2 font-mono border border-brand-cyan/20 px-1 rounded bg-brand-cyan/10">{latency}ms</span>}
                 </div>
                 <div className="flex items-center gap-2">
-                   <div className={`w-2 h-2 rounded-full ${isLocalConnected ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
-                   <span className="text-xs tracking-widest opacity-60">LOCAL_SYS: {isLocalConnected ? 'ONLINE' : 'OFFLINE'}</span>
+                   <div className={`w-[6px] h-[6px] rounded-full ${isLocalConnected ? 'bg-brand-cyan shadow-[0_0_8px_rgba(14,165,233,0.5)] animate-pulse' : 'bg-yellow-500'}`} />
+                   <span className="tracking-[0.2em] opacity-50 uppercase">Local Sys:</span>
+                   <span className={`tracking-widest font-medium ${isLocalConnected ? 'text-brand-cyan' : 'text-yellow-400'}`}>{isLocalConnected ? 'ONLINE' : 'OFFLINE'}</span>
                 </div>
             </div>
           </div>
           
-          <div className="text-right flex flex-col items-end opacity-60">
-             <span className="text-xs tracking-widest font-mono">SYS_TIME</span>
-             <span className="text-lg tracking-wider font-mono">{new Date().toLocaleTimeString()}</span>
+          <div className="text-right flex flex-col items-end">
+             <span className="text-[10px] tracking-[0.3em] font-mono text-brand-cyan/60 uppercase">System Time</span>
+             <span className="text-xl tracking-wider font-mono text-white font-light mt-1">{new Date().toLocaleTimeString()}</span>
           </div>
         </div>
 
@@ -1172,27 +1174,27 @@ export default function App() {
         <div className="flex justify-between items-end pointer-events-auto">
           
           <div className="w-1/3 min-w-[300px] flex flex-col gap-3">
-             <div className="flex items-center gap-3 text-xs font-mono tracking-widest uppercase ml-1">
-                 <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-brand-cyan shadow-[0_0_8px_rgba(14,165,233,0.8)] animate-pulse' : 'bg-zinc-600'}`} />
+             <div className="flex items-center gap-3 text-[10px] font-mono tracking-[0.2em] uppercase ml-1 mb-1">
+                 <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-brand-cyan shadow-[0_0_10px_rgba(14,165,233,0.8)] animate-pulse' : 'bg-zinc-600'}`} />
                  <motion.span 
                     key={status}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className={isConnected ? 'text-brand-cyan' : 'text-zinc-500'}
+                    className={`font-semibold ${isConnected ? 'text-brand-cyan drop-shadow-[0_0_5px_rgba(14,165,233,0.5)]' : 'text-zinc-500'}`}
                  >
                     {status}
                  </motion.span>
              </div>
 
-             <div className="bg-brand-bg/50 backdrop-blur-md border border-brand-cyan/20 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-3 text-brand-cyan/70 border-b border-brand-cyan/20 pb-2">
+             <div className="bg-brand-bg/40 backdrop-blur-md border border-brand-cyan/10 border-t-brand-cyan/30 p-5 rounded-lg shadow-2xl">
+                <div className="flex items-center gap-2 mb-3 text-brand-cyan/80 border-b border-brand-cyan/10 pb-2">
                    <Terminal size={14} />
-                   <span className="text-xs tracking-widest">SYS.LOG</span>
+                   <span className="text-[10px] tracking-[0.3em] font-sans font-medium uppercase drop-shadow-[0_0_8px_rgba(14,165,233,0.5)]">System Event Log</span>
                 </div>
-                <div className="flex flex-col gap-1 font-mono text-[10px] text-zinc-400 opacity-80 max-h-32 overflow-y-auto">
-                   {logs.length === 0 && <span>AWAITING INITIALIZATION...</span>}
+                <div className="flex flex-col gap-1.5 font-mono text-[10px] text-zinc-300 opacity-90 max-h-32 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-brand-cyan/20">
+                   {logs.length === 0 && <span className="opacity-50">AWAITING INITIALIZATION...</span>}
                    {logs.map((log, i) => (
-                       <span key={i} className="animate-in fade-in slide-in-from-left-2">{log}</span>
+                       <span key={i} className="animate-in fade-in slide-in-from-left-2"><span className="text-brand-cyan/50 mr-2">&gt;</span>{log}</span>
                    ))}
                 </div>
              </div>
@@ -1203,14 +1205,14 @@ export default function App() {
              <div className="flex gap-4">
                  <button 
                     onClick={() => setShowToolsPanel(!showToolsPanel)}
-                    className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all backdrop-blur-md ${showToolsPanel ? 'bg-brand-cyan text-black border-brand-cyan shadow-[0_0_15px_rgba(14,165,233,0.5)]' : 'bg-brand-bg/60 text-brand-cyan border-brand-cyan/30 hover:bg-brand-cyan/20'}`}
+                    className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all duration-300 backdrop-blur-md ${showToolsPanel ? 'bg-brand-cyan text-black border-brand-cyan shadow-[0_0_20px_rgba(14,165,233,0.6)]' : 'bg-black/40 text-brand-cyan/80 border-brand-cyan/10 hover:border-brand-cyan/40 hover:text-brand-cyan hover:shadow-[0_0_15px_rgba(14,165,233,0.3)]'}`}
                     title="System Tools"
                  >
                     <Wrench size={18} />
                  </button>
                  <button 
                     onClick={() => setShowSettings(true)}
-                    className="flex items-center justify-center w-12 h-12 rounded-full border transition-all backdrop-blur-md bg-brand-bg/60 text-brand-cyan border-brand-cyan/30 hover:bg-brand-cyan/20"
+                    className="flex items-center justify-center w-12 h-12 rounded-full border transition-all duration-300 backdrop-blur-md bg-black/40 text-brand-cyan/80 border-brand-cyan/10 hover:border-brand-cyan/40 hover:text-brand-cyan hover:shadow-[0_0_15px_rgba(14,165,233,0.3)]"
                     title="Settings"
                  >
                     <Settings size={18} />
@@ -1218,8 +1220,8 @@ export default function App() {
 
                  <button 
                     onClick={isConnected ? disconnectAPI : connectLiveAPI}
-                    className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all backdrop-blur-md 
-                      ${isConnected ? 'bg-brand-cyan text-black border-brand-cyan shadow-[0_0_15px_rgba(14,165,233,0.5)]' : 'bg-brand-bg/60 border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/20'}
+                    className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all duration-300 backdrop-blur-md 
+                      ${isConnected ? 'bg-brand-cyan text-black border-brand-cyan shadow-[0_0_20px_rgba(14,165,233,0.6)]' : 'bg-black/40 text-brand-cyan/80 border-brand-cyan/10 hover:border-brand-cyan/40 hover:text-brand-cyan hover:shadow-[0_0_15px_rgba(14,165,233,0.3)]'}
                     `}
                     title={isConnected ? "Disconnect from AI" : "Connect to AI (Start Microphone)"}
                  >
@@ -1228,7 +1230,7 @@ export default function App() {
                  
                  <button 
                     onClick={() => setVisionMode(!visionMode)}
-                    className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all backdrop-blur-md ${visionMode ? 'bg-brand-cyan text-black border-brand-cyan shadow-[0_0_15px_rgba(14,165,233,0.5)]' : 'bg-brand-bg/60 text-brand-cyan border-brand-cyan/30 hover:bg-brand-cyan/20'}`}
+                    className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all duration-300 backdrop-blur-md ${visionMode ? 'bg-brand-cyan text-black border-brand-cyan shadow-[0_0_20px_rgba(14,165,233,0.6)]' : 'bg-black/40 text-brand-cyan/80 border-brand-cyan/10 hover:border-brand-cyan/40 hover:text-brand-cyan hover:shadow-[0_0_15px_rgba(14,165,233,0.3)]'}`}
                     title="Toggle Vision Mode"
                  >
                     <Eye size={18} />
