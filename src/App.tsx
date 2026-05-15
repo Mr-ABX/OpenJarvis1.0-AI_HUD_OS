@@ -48,6 +48,7 @@ export default function App() {
   
   const [userName, setUserNameState] = useState<string>("Sir");
   const [userTitles, setUserTitlesState] = useState<string>("Boss, Captain");
+  const [customWakeWords, setCustomWakeWordsState] = useState<string>("wake up jarvis, wake up friday");
   const [clapSensitivity, setClapSensitivityState] = useState<number>(85);
   const [idleTimeout, setIdleTimeoutState] = useState<number>(5);
   
@@ -55,6 +56,7 @@ export default function App() {
   const voiceNameRef = useRef<string>("Charon");
   const userNameRef = useRef<string>("Sir");
   const userTitlesRef = useRef<string>("Boss, Captain");
+  const customWakeWordsRef = useRef<string>("wake up jarvis, wake up friday");
   const clapSensitivityRef = useRef<number>(85);
   const idleTimeoutRef = useRef<number>(5);
   const lastActivityTimeRef = useRef<number>(Date.now());
@@ -77,6 +79,11 @@ export default function App() {
   const setUserTitles = (val: string) => {
       setUserTitlesState(val);
       userTitlesRef.current = val;
+  };
+
+  const setCustomWakeWords = (val: string) => {
+      setCustomWakeWordsState(val);
+      customWakeWordsRef.current = val;
   };
 
   const setClapSensitivity = (val: number) => {
@@ -118,6 +125,7 @@ export default function App() {
             if (data.localServerUrl) setLocalServerUrl(data.localServerUrl);
             if (data.userName) setUserName(data.userName);
             if (data.userTitles) setUserTitles(data.userTitles);
+            if (data.customWakeWords) setCustomWakeWords(data.customWakeWords);
             if (data.voiceName) setVoiceName(data.voiceName);
             if (data.autoApproveTools !== undefined) setAutoApproveTools(data.autoApproveTools);
             if (data.showToasts !== undefined) setShowToasts(data.showToasts);
@@ -138,6 +146,7 @@ export default function App() {
           localServerUrl,
           userName,
           userTitles,
+          customWakeWords,
           voiceName,
           autoApproveTools,
           showToasts,
@@ -167,6 +176,7 @@ export default function App() {
           setLocalServerUrl("http://localhost:8000");
           setUserName("Sir");
           setUserTitles("Boss, Captain");
+          setCustomWakeWords("wake up jarvis, wake up friday");
           setVoiceName("Charon");
           setAutoApproveTools(true);
           setShowToasts(true);
@@ -746,8 +756,13 @@ export default function App() {
                 const transcript = finalTranscript.toLowerCase().trim();
                 if (!transcript) return;
                 
-                // Strict wake word match: must contain the wake words.
-                const isWakeMatch = /\b(jarvis|friday|hey jarvis|hey friday|wake up jarvis|wake up friday)\b/.test(transcript);
+                // Strict wake word match: check against customWakeWords
+                const wakeWordsPattern = customWakeWordsRef.current
+                     .split(',')
+                     .map(w => w.trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+                     .filter(w => w.length > 0)
+                     .join('|');
+                const isWakeMatch = wakeWordsPattern.length > 0 && new RegExp(`\\b(${wakeWordsPattern})\\b`, 'i').test(transcript);
                 
                 if (isWakeMatch) {
                     addLog(`Wake word detected: "${transcript}"`);
@@ -1228,6 +1243,20 @@ export default function App() {
                           onChange={(e) => setUserTitles(e.target.value)}
                           className="w-full bg-brand-bg/60 border border-brand-cyan/30 text-brand-cyan text-xs font-mono p-2 rounded outline-none focus:border-brand-cyan"
                           placeholder="e.g., Boss, Sir, Captain"
+                       />
+                   </div>
+
+                   <div className="flex flex-col gap-2">
+                       <div className="flex flex-col">
+                          <span className="text-zinc-200 font-mono text-sm">Custom Wake Words</span>
+                          <span className="text-zinc-500 font-mono text-[10px]">Comma separated (e.g., wake up jarvis, hey friday)</span>
+                       </div>
+                       <input 
+                          type="text" 
+                          value={customWakeWords}
+                          onChange={(e) => setCustomWakeWords(e.target.value)}
+                          className="w-full bg-brand-bg/60 border border-brand-cyan/30 text-brand-cyan text-xs font-mono p-2 rounded outline-none focus:border-brand-cyan"
+                          placeholder="e.g., wake up jarvis, wake up friday"
                        />
                    </div>
 
