@@ -462,10 +462,15 @@ export default function App() {
       try {
           updateStatus("INITIALIZING AI...");
           let finalApiKey = customApiKey;
-          if (!finalApiKey) {
+          let baseUrl: string | undefined = undefined;
+
+          if (!finalApiKey && apiProvider === 'google') {
               const res = await fetch('/api/config');
               const configData = await res.json();
-              finalApiKey = configData.geminiApiKey;
+              if (configData.hasApiKey) {
+                 finalApiKey = "proxy-key";
+                 baseUrl = `${window.location.protocol}//${window.location.host}/api/proxy`;
+              }
           }
           
           if (!finalApiKey) {
@@ -476,7 +481,10 @@ export default function App() {
           }
 
           const genAIConfig: any = { apiKey: finalApiKey };
-          if (apiProvider === 'openrouter') {
+          if (baseUrl) {
+              genAIConfig.httpOptions = { baseUrl };
+              addLog("Using backend proxy for Gemini");
+          } else if (apiProvider === 'openrouter') {
               genAIConfig.httpOptions = { baseUrl: 'https://openrouter.ai/api/v1' };
               addLog("Using OpenRouter endpoint");
           }

@@ -1,4 +1,5 @@
 import express from 'express';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import { createServer as createViteServer } from 'vite';
 import http from 'http';
 import { WebSocketServer } from 'ws';
@@ -255,8 +256,40 @@ AI: [Your spoken response here]`;
   });
 
   app.get('/api/config', (req, res) => {
-    res.json({ geminiApiKey: process.env.GEMINI_API_KEY });
+    // Return empty for security. Frontend will use proxy.
+    res.json({ geminiApiKey: null, hasApiKey: !!process.env.GEMINI_API_KEY });
   });
+
+  const geminiProxy = createProxyMiddleware({
+    target: 'https://generativelanguage.googleapis.com',
+    changeOrigin: true,
+    ws: true,
+    pathRewrite: {
+      '^/api/proxy': '',
+    },
+    on: {
+      proxyReq: (proxyReq, req, res) => {
+        if (process.env.GEMINI_API_KEY) {
+           if (proxyReq.path && proxyReq.path.includes('key=proxy-key')) {
+               proxyReq.path = proxyReq.path.replace('key=proxy-key', 'key=' + process.env.GEMINI_API_KEY);
+           } else if (!req.url.includes('key=')) {
+               proxyReq.setHeader('x-goog-api-key', process.env.GEMINI_API_KEY);
+           }
+        }
+      },
+      proxyReqWs: (proxyReq, req, socket, options, head) => {
+         if (process.env.GEMINI_API_KEY) {
+            if (proxyReq.path && proxyReq.path.includes('key=proxy-key')) {
+                proxyReq.path = proxyReq.path.replace('key=proxy-key', 'key=' + process.env.GEMINI_API_KEY);
+            } else if (!req.url.includes('key=')) {
+                proxyReq.path += (proxyReq.path.includes('?') ? '&' : '?') + 'key=' + process.env.GEMINI_API_KEY;
+            }
+         }
+      }
+    }
+  });
+
+  app.use('/api/proxy', geminiProxy);
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
