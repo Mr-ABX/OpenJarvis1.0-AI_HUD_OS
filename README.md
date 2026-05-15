@@ -21,8 +21,8 @@ Created by **AbdulRahman-T** (AB).
 If you are downloading this for the first time, use `git clone` (do not use `git pull`):
 
 ```bash
-git clone https://github.com/AbdulRahman-T/JARVIS-OS.git
-cd JARVIS-OS
+git clone https://github.com/Mr-ABX/OpenJarvis-1.0.git
+cd OpenJarvis-1.0
 ```
 
 ### 2. The Frontend (React/Vite)
