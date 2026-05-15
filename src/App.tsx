@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { ParticleOrb } from './orb';
-import { Camera, Mic, Activity, Eye, Terminal, Volume2, Settings, X } from 'lucide-react';
+import { Camera, Mic, Activity, Eye, Terminal, Volume2, Settings, X, Wrench, Sun } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI, Modality, Type } from '@google/genai';
 
@@ -39,16 +39,34 @@ export default function App() {
   const [logs, setLogs] = useState<string[]>([]);
   const [aiSubtitle, setAiSubtitle] = useState<string>("");
   
+  const [hudVolume, setHudVolume] = useState<number | null>(null);
+  const [hudBrightness, setHudBrightness] = useState<number | null>(null);
+  const hudTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showHudIndicator = (type: 'volume' | 'brightness', level: number) => {
+      if (type === 'volume') setHudVolume(level);
+      if (type === 'brightness') setHudBrightness(level);
+      
+      if (hudTimeoutRef.current) clearTimeout(hudTimeoutRef.current);
+      hudTimeoutRef.current = setTimeout(() => {
+          setHudVolume(null);
+          setHudBrightness(null);
+      }, 3000);
+  };
+  
   const [pendingToolCall, setPendingToolCall] = useState<ToolCall | null>(null);
 
   // Settings State
   const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showToolsPanel, setShowToolsPanel] = useState<boolean>(false);
   const [autoApproveTools, setAutoApproveToolsState] = useState<boolean>(true);
   const [voiceName, setVoiceNameState] = useState<"Fenrir" | "Kore" | "Aoede" | "Charon" | "Puck">("Charon");
   
   const [userName, setUserNameState] = useState<string>("Sir");
   const [userTitles, setUserTitlesState] = useState<string>("Boss, Captain");
   const [customWakeWords, setCustomWakeWordsState] = useState<string>("wake up jarvis, wake up friday");
+  const [customIdleWords, setCustomIdleWordsState] = useState<string>("shut down, go offline, go to sleep, idle");
+  const [customVisionWords, setCustomVisionWordsState] = useState<string>("activate vision, deactivate vision, activate sight, deactivate sight");
   const [clapSensitivity, setClapSensitivityState] = useState<number>(85);
   const [idleTimeout, setIdleTimeoutState] = useState<number>(5);
   
@@ -57,6 +75,8 @@ export default function App() {
   const userNameRef = useRef<string>("Sir");
   const userTitlesRef = useRef<string>("Boss, Captain");
   const customWakeWordsRef = useRef<string>("wake up jarvis, wake up friday");
+  const customIdleWordsRef = useRef<string>("shut down, go offline, go to sleep, idle");
+  const customVisionWordsRef = useRef<string>("activate vision, deactivate vision, activate sight, deactivate sight");
   const clapSensitivityRef = useRef<number>(85);
   const idleTimeoutRef = useRef<number>(5);
   const lastActivityTimeRef = useRef<number>(Date.now());
@@ -84,6 +104,16 @@ export default function App() {
   const setCustomWakeWords = (val: string) => {
       setCustomWakeWordsState(val);
       customWakeWordsRef.current = val;
+  };
+
+  const setCustomIdleWords = (val: string) => {
+      setCustomIdleWordsState(val);
+      customIdleWordsRef.current = val;
+  };
+
+  const setCustomVisionWords = (val: string) => {
+      setCustomVisionWordsState(val);
+      customVisionWordsRef.current = val;
   };
 
   const setClapSensitivity = (val: number) => {
@@ -126,6 +156,8 @@ export default function App() {
             if (data.userName) setUserName(data.userName);
             if (data.userTitles) setUserTitles(data.userTitles);
             if (data.customWakeWords) setCustomWakeWords(data.customWakeWords);
+            if (data.customIdleWords) setCustomIdleWords(data.customIdleWords);
+            if (data.customVisionWords) setCustomVisionWords(data.customVisionWords);
             if (data.voiceName) setVoiceName(data.voiceName);
             if (data.autoApproveTools !== undefined) setAutoApproveTools(data.autoApproveTools);
             if (data.showToasts !== undefined) setShowToasts(data.showToasts);
@@ -147,6 +179,8 @@ export default function App() {
           userName,
           userTitles,
           customWakeWords,
+          customIdleWords,
+          customVisionWords,
           voiceName,
           autoApproveTools,
           showToasts,
@@ -177,6 +211,8 @@ export default function App() {
           setUserName("Sir");
           setUserTitles("Boss, Captain");
           setCustomWakeWords("wake up jarvis, wake up friday");
+          setCustomIdleWords("shut down, go offline, go to sleep, idle");
+          setCustomVisionWords("activate vision, deactivate vision, activate sight, deactivate sight");
           setVoiceName("Charon");
           setAutoApproveTools(true);
           setShowToasts(true);
@@ -459,7 +495,7 @@ export default function App() {
 
                      if (message.toolCall?.functionCalls) {
                          const call = message.toolCall.functionCalls[0];
-                         const osTools = ["open_website", "open", "send_notification", "set_volume", "get_news", "get_weather", "get_system_stats", "move_app_to_display"];
+                         const osTools = ["open_website", "open", "send_notification", "set_volume", "set_brightness", "get_news", "get_weather", "get_system_stats", "move_app_to_display", "go_offline", "toggle_vision_mode"];
                          if (osTools.includes(call.name)) {
                              if (autoApproveToolsRef.current) {
                                  addLog(`OS Tool auto-approved: ${call.name}`);
@@ -492,9 +528,24 @@ export default function App() {
                         prebuiltVoiceConfig: { voiceName: voiceNameRef.current }
                     }
                 },
-                systemInstruction: { parts: [{ text: `You are ${(voiceNameRef.current === 'Fenrir' || voiceNameRef.current === 'Charon') ? 'J.A.R.V.I.S.' : 'F.R.I.D.A.Y.'}, a real-time AI assistant. My name is ${userNameRef.current} and you can call me by these titles: ${userTitlesRef.current}. CRITICAL INSTRUCTION: You MUST ignore any background noise, throat clearing, or irrelevant speech. Only respond if directly addressed or if the user is clearly speaking to you. Be highly concise, use short sentences. If you're asked to open a website, call the relevant tool. If asked to "play" a song or video on YouTube, construct the url exactly as 'https://www.google.com/search?btnI=1&q=site:youtube.com+<query>' for the open_website tool; you must explicitly tell the user that you are using Google's "I'm Feeling Lucky" feature to automatically redirect and play the first YouTube result without requiring them to click. If asked to open a desktop app, use the 'open' tool. If asked to set or change volume, use the 'set_volume' tool. If asked to send a notification, use the 'send_notification' tool. If you are asked for the latest news, use the 'get_news' tool. If asked for weather, use 'get_weather'. If asked for system stats/usage, use 'get_system_stats'. If asked to move an app to the second display, use 'move_app_to_display'.` }]},
+                systemInstruction: { parts: [{ text: `You are ${(voiceNameRef.current === 'Fenrir' || voiceNameRef.current === 'Charon') ? 'J.A.R.V.I.S.' : 'F.R.I.D.A.Y.'}, a real-time AI assistant. My name is ${userNameRef.current} and you can call me by these titles: ${userTitlesRef.current}. CRITICAL INSTRUCTION: You MUST ignore any background noise, throat clearing, or irrelevant speech. Only respond if directly addressed or if the user is clearly speaking to you. Be highly concise, use short sentences. If you're asked to open a website, call the relevant tool. If asked to "play" a song or video on YouTube, construct the url exactly as 'https://www.google.com/search?btnI=1&q=site:youtube.com+<query>' for the open_website tool; you must explicitly tell the user that you are using Google's "I'm Feeling Lucky" feature to automatically redirect and play the first YouTube result without requiring them to click. If asked to open a desktop app, use the 'open' tool. If asked to set or change volume, use the 'set_volume' tool. If asked to set or change screen brightness, use the 'set_brightness' tool. If asked to send a notification, use the 'send_notification' tool. If you are asked for the latest news, use the 'get_news' tool. If asked for weather, use 'get_weather'. If asked for system stats/usage, use 'get_system_stats'. If asked to move an app to the second display, use 'move_app_to_display'. CRITICAL: If the user says any of these words [${customIdleWordsRef.current}], you MUST IMMEDIATELY call the 'go_offline' tool to go to sleep. If the user says any of these words [${customVisionWordsRef.current}], you MUST call 'toggle_vision_mode' with the requested state.` }]},
                 tools: [{
                    functionDeclarations: [
+                      {
+                         name: "go_offline",
+                         description: "Puts you into sleep/offline/idle mode, shutting down your systems.",
+                      },
+                      {
+                         name: "toggle_vision_mode",
+                         description: "Enables or disables your camera vision mode sight.",
+                         parameters: {
+                            type: Type.OBJECT,
+                            properties: {
+                               enable: { type: Type.BOOLEAN, description: "True to enable vision/sight, false to disable it." }
+                            },
+                            required: ["enable"]
+                         }
+                      },
                       {
                          name: "open_website",
                          description: "Opens a website for the user based on their request.",
@@ -525,6 +576,17 @@ export default function App() {
                             type: Type.OBJECT,
                             properties: {
                                level: { type: Type.NUMBER, description: "Volume level from 0 to 100." }
+                            },
+                            required: ["level"]
+                         }
+                      },
+                      {
+                         name: "set_brightness",
+                         description: "Sets the system display brightness.",
+                         parameters: {
+                            type: Type.OBJECT,
+                            properties: {
+                               level: { type: Type.NUMBER, description: "Brightness level from 0 to 100." }
                             },
                             required: ["level"]
                          }
@@ -605,6 +667,18 @@ export default function App() {
       if (!sessionRef.current) return;
       
           if (action === "approve") {
+          if (name === "go_offline") {
+              addLog("Sleeping requested.");
+              disconnectAPI();
+              return;
+          }
+          if (name === "toggle_vision_mode" && args.enable !== undefined) {
+              setVisionMode(args.enable);
+              sessionRef.current.sendToolResponse({
+                  functionResponses: [{ id, name, response: { success: true, message: `Vision mode ${args.enable ? 'enabled' : 'disabled'}` } }]
+              });
+              return;
+          }
           if (name === "send_notification" && args.title && args.body) {
               addLog(`Sending Notification: ${args.title}`);
               if (Notification.permission === 'granted') {
@@ -648,6 +722,12 @@ export default function App() {
 
           if (isLocalConnected) {
              try {
+                if (name === "set_volume" && args.level !== undefined) {
+                    showHudIndicator('volume', Number(args.level));
+                } else if (name === "set_brightness" && args.level !== undefined) {
+                    showHudIndicator('brightness', Number(args.level));
+                }
+                
                 const res = await fetch(`${localServerUrl}/execute`, {
                     method: "POST",
                     headers: { 
@@ -928,7 +1008,7 @@ export default function App() {
         {visionMode && (
           <motion.div 
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.4 }}
+            animate={{ opacity: 0.6 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-0"
           >
@@ -939,6 +1019,8 @@ export default function App() {
               muted 
               className="w-full h-full object-cover scale-x-[-1]"
             />
+            {/* Vignette Overlay */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.85)_100%)] pointer-events-none" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -988,7 +1070,10 @@ export default function App() {
          </motion.div>
       )}
 
-      <canvas ref={canvasRef} className="absolute inset-0 z-10 pointer-events-none" />
+      <canvas 
+          ref={canvasRef} 
+          className={`absolute inset-0 z-10 pointer-events-none transition-all duration-1000 ease-in-out origin-bottom-right ${visionMode ? 'scale-[0.2] -translate-x-6 -translate-y-28 opacity-80' : 'scale-100 translate-x-0 translate-y-0 opacity-100'}`} 
+      />
 
       <div className="absolute inset-0 z-20 flex flex-col justify-between p-8 pointer-events-none">
         
@@ -1044,61 +1129,171 @@ export default function App() {
            </AnimatePresence>
         </div>
 
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-32 pointer-events-none">
-           <motion.div 
-             key={status}
-             initial={{ opacity: 0, y: 10 }}
-             animate={{ opacity: 1, y: 0 }}
-             className={`tracking-[0.3em] text-sm text-center font-mono opacity-80 ${isConnected ? 'text-brand-cyan' : 'text-zinc-500'}`}
-           >
-             {status}
-           </motion.div>
+        {/* HUD Indicators fixed to top-right */}
+        <div className="fixed top-6 right-6 flex flex-col gap-4 z-40 pointer-events-none">
+           <AnimatePresence>
+               {hudVolume !== null && (
+                   <motion.div 
+                     initial={{ opacity: 0, x: 20 }}
+                     animate={{ opacity: 1, x: 0 }}
+                     exit={{ opacity: 0, x: 20 }}
+                     className="bg-black/80 backdrop-blur-md border border-brand-cyan/40 p-4 rounded-lg flex items-center gap-4 text-brand-cyan w-64 shadow-2xl"
+                   >
+                       <Volume2 size={24} />
+                       <div className="flex-1">
+                           <div className="text-xs font-mono uppercase tracking-widest mb-1">SYS_VOL</div>
+                           <div className="w-full h-1 bg-brand-cyan/20 rounded-full overflow-hidden">
+                               <div className="h-full bg-brand-cyan" style={{ width: `${hudVolume}%` }} />
+                           </div>
+                       </div>
+                       <span className="text-xs font-mono">{hudVolume}%</span>
+                   </motion.div>
+               )}
+               {hudBrightness !== null && (
+                   <motion.div 
+                     initial={{ opacity: 0, x: 20 }}
+                     animate={{ opacity: 1, x: 0 }}
+                     exit={{ opacity: 0, x: 20 }}
+                     className="bg-black/80 backdrop-blur-md border border-brand-cyan/40 p-4 rounded-lg flex items-center gap-4 text-brand-cyan w-64 shadow-2xl"
+                   >
+                       <Sun size={24} />
+                       <div className="flex-1">
+                           <div className="text-xs font-mono uppercase tracking-widest mb-1">SYS_BRIGHT</div>
+                           <div className="w-full h-1 bg-brand-cyan/20 rounded-full overflow-hidden">
+                               <div className="h-full bg-brand-cyan" style={{ width: `${hudBrightness}%` }} />
+                           </div>
+                       </div>
+                       <span className="text-xs font-mono">{hudBrightness}%</span>
+                   </motion.div>
+               )}
+           </AnimatePresence>
         </div>
 
         <div className="flex justify-between items-end pointer-events-auto">
           
-          <div className="w-1/3 min-w-[300px] bg-brand-bg/50 backdrop-blur-md border border-brand-cyan/20 p-4 rounded-lg">
-             <div className="flex items-center gap-2 mb-3 text-brand-cyan/70 border-b border-brand-cyan/20 pb-2">
-                <Terminal size={14} />
-                <span className="text-xs tracking-widest">SYS.LOG</span>
+          <div className="w-1/3 min-w-[300px] flex flex-col gap-3">
+             <div className="flex items-center gap-3 text-xs font-mono tracking-widest uppercase ml-1">
+                 <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-brand-cyan shadow-[0_0_8px_rgba(14,165,233,0.8)] animate-pulse' : 'bg-zinc-600'}`} />
+                 <motion.span 
+                    key={status}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={isConnected ? 'text-brand-cyan' : 'text-zinc-500'}
+                 >
+                    {status}
+                 </motion.span>
              </div>
-             <div className="flex flex-col gap-1 font-mono text-[10px] text-zinc-400 opacity-80 max-h-32 overflow-y-auto">
-                {logs.length === 0 && <span>AWAITING INITIALIZATION...</span>}
-                {logs.map((log, i) => (
-                    <span key={i} className="animate-in fade-in slide-in-from-left-2">{log}</span>
-                ))}
+
+             <div className="bg-brand-bg/50 backdrop-blur-md border border-brand-cyan/20 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-3 text-brand-cyan/70 border-b border-brand-cyan/20 pb-2">
+                   <Terminal size={14} />
+                   <span className="text-xs tracking-widest">SYS.LOG</span>
+                </div>
+                <div className="flex flex-col gap-1 font-mono text-[10px] text-zinc-400 opacity-80 max-h-32 overflow-y-auto">
+                   {logs.length === 0 && <span>AWAITING INITIALIZATION...</span>}
+                   {logs.map((log, i) => (
+                       <span key={i} className="animate-in fade-in slide-in-from-left-2">{log}</span>
+                   ))}
+                </div>
              </div>
           </div>
 
-          <div className="flex gap-4">
-             <button 
-                onClick={() => setShowSettings(true)}
-                className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all backdrop-blur-md bg-brand-bg/60 text-brand-cyan border-brand-cyan/30 hover:bg-brand-cyan/20`}
-                title="Settings"
-             >
-                <Settings size={18} />
-             </button>
+          <div className="flex flex-col items-end gap-6">
 
-             <button 
-                onClick={isConnected ? disconnectAPI : connectLiveAPI}
-                className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all backdrop-blur-md 
-                  ${isConnected ? 'bg-brand-cyan text-black border-brand-cyan shadow-[0_0_15px_rgba(14,165,233,0.5)]' : 'bg-brand-bg/60 border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/20'}
-                `}
-                title={isConnected ? "Disconnect from AI" : "Connect to AI (Start Microphone)"}
-             >
-                <Mic size={18} />
-             </button>
-             
-             <button 
-                onClick={() => setVisionMode(!visionMode)}
-                className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all backdrop-blur-md ${visionMode ? 'bg-brand-cyan text-brand-bg border-brand-cyan shadow-[0_0_15px_rgba(14,165,233,0.5)]' : 'bg-brand-bg/60 text-brand-cyan border-brand-cyan/30 hover:bg-brand-cyan/20'}`}
-                title="Toggle Vision Mode"
-             >
-                <Eye size={18} />
-             </button>
+             <div className="flex gap-4">
+                 <button 
+                    onClick={() => setShowToolsPanel(!showToolsPanel)}
+                    className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all backdrop-blur-md ${showToolsPanel ? 'bg-brand-cyan text-black border-brand-cyan shadow-[0_0_15px_rgba(14,165,233,0.5)]' : 'bg-brand-bg/60 text-brand-cyan border-brand-cyan/30 hover:bg-brand-cyan/20'}`}
+                    title="System Tools"
+                 >
+                    <Wrench size={18} />
+                 </button>
+                 <button 
+                    onClick={() => setShowSettings(true)}
+                    className="flex items-center justify-center w-12 h-12 rounded-full border transition-all backdrop-blur-md bg-brand-bg/60 text-brand-cyan border-brand-cyan/30 hover:bg-brand-cyan/20"
+                    title="Settings"
+                 >
+                    <Settings size={18} />
+                 </button>
+
+                 <button 
+                    onClick={isConnected ? disconnectAPI : connectLiveAPI}
+                    className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all backdrop-blur-md 
+                      ${isConnected ? 'bg-brand-cyan text-black border-brand-cyan shadow-[0_0_15px_rgba(14,165,233,0.5)]' : 'bg-brand-bg/60 border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/20'}
+                    `}
+                    title={isConnected ? "Disconnect from AI" : "Connect to AI (Start Microphone)"}
+                 >
+                    <Mic size={18} className={isConnected ? "animate-pulse" : ""} />
+                 </button>
+                 
+                 <button 
+                    onClick={() => setVisionMode(!visionMode)}
+                    className={`flex items-center justify-center w-12 h-12 rounded-full border transition-all backdrop-blur-md ${visionMode ? 'bg-brand-cyan text-black border-brand-cyan shadow-[0_0_15px_rgba(14,165,233,0.5)]' : 'bg-brand-bg/60 text-brand-cyan border-brand-cyan/30 hover:bg-brand-cyan/20'}`}
+                    title="Toggle Vision Mode"
+                 >
+                    <Eye size={18} />
+                 </button>
+             </div>
           </div>
-
         </div>
+
+        {/* System Tools Panel Modal */}
+        <AnimatePresence>
+          {showToolsPanel && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="absolute bottom-28 right-6 bg-black/80 backdrop-blur-md border border-brand-cyan/40 p-5 rounded-lg w-72 pointer-events-auto z-50 shadow-2xl"
+              >
+                  <div className="flex items-center justify-between mb-4 border-b border-brand-cyan/20 pb-2">
+                     <div className="flex items-center gap-2 text-brand-cyan">
+                         <Wrench size={16} />
+                         <span className="text-sm font-mono uppercase tracking-widest">Capabilities</span>
+                     </div>
+                     <button onClick={() => setShowToolsPanel(false)} className="text-brand-cyan/50 hover:text-brand-cyan"><X size={16}/></button>
+                  </div>
+                  <div className="flex flex-col gap-3 font-mono text-[10px] text-zinc-400 capitalize overflow-y-auto max-h-[50vh] pr-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-brand-cyan/30">
+                     <div className="flex flex-col">
+                         <span className="text-brand-cyan">Open Websites</span>
+                         <span className="text-[9px] opacity-60">Opens URLs like YouTube directly</span>
+                     </div>
+                     <div className="flex flex-col">
+                         <span className="text-brand-cyan">Open Desktop Apps</span>
+                         <span className="text-[9px] opacity-60">Requires local Python backend</span>
+                     </div>
+                     <div className="flex flex-col">
+                         <span className="text-brand-cyan">Adjust System Volume</span>
+                         <span className="text-[9px] opacity-60">Change system audio level natively</span>
+                     </div>
+                     <div className="flex flex-col">
+                         <span className="text-brand-cyan">Adjust Brightness</span>
+                         <span className="text-[9px] opacity-60">Change monitor brightness</span>
+                     </div>
+                     <div className="flex flex-col">
+                         <span className="text-brand-cyan">Send OS Notifications</span>
+                         <span className="text-[9px] opacity-60">Push native desktop alerts</span>
+                     </div>
+                     <div className="flex flex-col">
+                         <span className="text-brand-cyan">Live World News</span>
+                         <span className="text-[9px] opacity-60">Fetch current global news</span>
+                     </div>
+                     <div className="flex flex-col">
+                         <span className="text-brand-cyan">Live Local Weather</span>
+                         <span className="text-[9px] opacity-60">Get real-time weather details</span>
+                     </div>
+                     <div className="flex flex-col">
+                         <span className="text-brand-cyan">System Stats</span>
+                         <span className="text-[9px] opacity-60">RAM and CPU usage from local backend</span>
+                     </div>
+                     <div className="flex flex-col">
+                         <span className="text-brand-cyan">MacOS Display Mover</span>
+                         <span className="text-[9px] opacity-60">Shift active apps to secondary displays</span>
+                     </div>
+                  </div>
+              </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Settings Modal */}
         <AnimatePresence>
@@ -1257,6 +1452,34 @@ export default function App() {
                           onChange={(e) => setCustomWakeWords(e.target.value)}
                           className="w-full bg-brand-bg/60 border border-brand-cyan/30 text-brand-cyan text-xs font-mono p-2 rounded outline-none focus:border-brand-cyan"
                           placeholder="e.g., wake up jarvis, wake up friday"
+                       />
+                   </div>
+
+                   <div className="flex flex-col gap-2">
+                       <div className="flex flex-col">
+                          <span className="text-zinc-200 font-mono text-sm">Custom Offline Words</span>
+                          <span className="text-zinc-500 font-mono text-[10px]">Comma separated (e.g., shut down, go offline)</span>
+                       </div>
+                       <input 
+                          type="text" 
+                          value={customIdleWords}
+                          onChange={(e) => setCustomIdleWords(e.target.value)}
+                          className="w-full bg-brand-bg/60 border border-brand-cyan/30 text-brand-cyan text-xs font-mono p-2 rounded outline-none focus:border-brand-cyan"
+                          placeholder="e.g., shut down, go to sleep"
+                       />
+                   </div>
+
+                   <div className="flex flex-col gap-2">
+                       <div className="flex flex-col">
+                          <span className="text-zinc-200 font-mono text-sm">Custom Vision Words</span>
+                          <span className="text-zinc-500 font-mono text-[10px]">Comma separated (e.g., activate vision, deactivate sight)</span>
+                       </div>
+                       <input 
+                          type="text" 
+                          value={customVisionWords}
+                          onChange={(e) => setCustomVisionWords(e.target.value)}
+                          className="w-full bg-brand-bg/60 border border-brand-cyan/30 text-brand-cyan text-xs font-mono p-2 rounded outline-none focus:border-brand-cyan"
+                          placeholder="e.g., activate vision, deactivate vision"
                        />
                    </div>
 

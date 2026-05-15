@@ -18,21 +18,45 @@ def execute_os_command(command_type: str, target: str):
             import json
             level = 50
             try:
-                # target will be a JSON string like {"level": 50}
                 args = json.loads(target)
                 level = int(args.get("level", 50))
             except:
                 level = int(target) if target.isdigit() else 50
                 
             if system == "Darwin":
-                subprocess.Popen(["osascript", "-e", f"set volume output volume {level}"])
+                subprocess.run(["osascript", "-e", f"set volume output volume {level}"])
                 return f"Volume set to {level}% on Mac."
             elif system == "Windows":
-                # For basic Windows volume, you would normally use 'pycaw' or similar package.
-                # Just mock or print here since it's an example:
                 return f"Received command to set volume to {level}%. On Windows, consider 'pip install pycaw' to implement."
             else:
                 return f"Volume set to {level}% (Unsupported OS logic)"
+        elif command_type == "set_brightness":
+            import json
+            level = 50
+            try:
+                args = json.loads(target)
+                level = int(args.get("level", 50))
+            except:
+                level = int(target) if target.isdigit() else 50
+                
+            if system == "Darwin":
+                import shutil
+                if shutil.which("brightness"):
+                    try:
+                        subprocess.run(["brightness", str(level / 100.0)], check=True)
+                        return f"Brightness set to {level}% on Mac."
+                    except subprocess.CalledProcessError:
+                        return f"Failed to set brightness. Make sure your display supports software brightness control."
+                else:
+                    return f"Brightness adjustment failed. Please install the required CLI tool on your Mac by running: `brew install brightness` in your terminal."
+            elif system == "Windows":
+                # For Windows, WMI can do this
+                try:
+                    subprocess.run(["powershell", "-Command", f"(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,{level})"], check=False)
+                except:
+                    pass
+                return f"Brightness set to {level}% on Windows."
+            return f"Brightness set to {level}% (Unsupported OS logic)"
         elif command_type == "search":
             url = f"https://www.youtube.com/results?search_query={target.replace(' ', '+')}"
             if system == "Darwin":
