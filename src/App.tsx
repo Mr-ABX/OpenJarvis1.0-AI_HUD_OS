@@ -187,6 +187,19 @@ export default function App() {
             console.error("Failed to load settings", e);
         }
     }
+
+    // Global error listener for unhandled connection drops or quotas
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+        const errStr = (event.reason?.message || event.reason?.toString() || "").toLowerCase();
+        if (errStr.includes("quota") || errStr.includes("429")) {
+            addToast("SYSTEM WARNING: API Quota Exceeded. Please check billing.");
+        } else if (errStr.includes("websocket closed without opened") || errStr.includes("websocket closed")) {
+            addToast("SYSTEM WARNING: WebSocket connection closed abnormally.");
+        }
+    };
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+    return () => window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const saveSettings = () => {
@@ -535,6 +548,14 @@ export default function App() {
                  onerror: (err: any) => {
                      console.error("Live API Error:", err);
                      addLog("Live API Error");
+                     const errStr = (err?.message || err?.toString() || "").toLowerCase();
+                     if (errStr.includes("quota") || errStr.includes("429")) {
+                         addToast("SYSTEM WARNING: API Quota Exceeded. Please check billing.");
+                     } else if (errStr.includes("websocket closed")) {
+                         addToast("SYSTEM WARNING: WebSocket connection closed abnormally.");
+                     } else {
+                         addToast("SYSTEM WARNING: Live API Connection Error.");
+                     }
                  }
              },
              config: {
