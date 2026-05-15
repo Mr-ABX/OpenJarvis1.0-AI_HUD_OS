@@ -41,11 +41,27 @@ export default function App() {
   
   const [hudVolume, setHudVolume] = useState<number | null>(null);
   const [hudBrightness, setHudBrightness] = useState<number | null>(null);
+  const [hudWeather, setHudWeather] = useState<string | null>(null);
+  const [hudNews, setHudNews] = useState<string | null>(null);
   const hudTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hudWeatherTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hudNewsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const showHudIndicator = (type: 'volume' | 'brightness', level: number) => {
-      if (type === 'volume') setHudVolume(level);
-      if (type === 'brightness') setHudBrightness(level);
+  const showHudIndicator = (type: 'volume' | 'brightness' | 'weather' | 'news', value: any) => {
+      if (type === 'volume') setHudVolume(value as number);
+      if (type === 'brightness') setHudBrightness(value as number);
+      if (type === 'weather') {
+          setHudWeather(value as string);
+          if (hudWeatherTimeoutRef.current) clearTimeout(hudWeatherTimeoutRef.current);
+          hudWeatherTimeoutRef.current = setTimeout(() => setHudWeather(null), 10000);
+          return;
+      }
+      if (type === 'news') {
+          setHudNews(value as string);
+          if (hudNewsTimeoutRef.current) clearTimeout(hudNewsTimeoutRef.current);
+          hudNewsTimeoutRef.current = setTimeout(() => setHudNews(null), 15000);
+          return;
+      }
       
       if (hudTimeoutRef.current) clearTimeout(hudTimeoutRef.current);
       hudTimeoutRef.current = setTimeout(() => {
@@ -528,7 +544,7 @@ export default function App() {
                         prebuiltVoiceConfig: { voiceName: voiceNameRef.current }
                     }
                 },
-                systemInstruction: { parts: [{ text: `You are ${(voiceNameRef.current === 'Fenrir' || voiceNameRef.current === 'Charon') ? 'J.A.R.V.I.S.' : 'F.R.I.D.A.Y.'}, a real-time AI assistant. My name is ${userNameRef.current} and you can call me by these titles: ${userTitlesRef.current}. CRITICAL INSTRUCTION: You MUST ignore any background noise, throat clearing, or irrelevant speech. Only respond if directly addressed or if the user is clearly speaking to you. Be highly concise, use short sentences. If you're asked to open a website, call the relevant tool. If asked to "play" a song or video on YouTube, construct the url exactly as 'https://www.google.com/search?btnI=1&q=site:youtube.com+<query>' for the open_website tool; you must explicitly tell the user that you are using Google's "I'm Feeling Lucky" feature to automatically redirect and play the first YouTube result without requiring them to click. If asked to open a desktop app, use the 'open' tool. If asked to set or change volume, use the 'set_volume' tool. If asked to set or change screen brightness, use the 'set_brightness' tool. If asked to send a notification, use the 'send_notification' tool. If you are asked for the latest news, use the 'get_news' tool. If asked for weather, use 'get_weather'. If asked for system stats/usage, use 'get_system_stats'. If asked to move an app to the second display, use 'move_app_to_display'. CRITICAL: If the user says any of these words [${customIdleWordsRef.current}], you MUST IMMEDIATELY call the 'go_offline' tool to go to sleep. If the user says any of these words [${customVisionWordsRef.current}], you MUST call 'toggle_vision_mode' with the requested state.` }]},
+                systemInstruction: { parts: [{ text: `You are ${(voiceNameRef.current === 'Fenrir' || voiceNameRef.current === 'Charon') ? 'J.A.R.V.I.S.' : 'F.R.I.D.A.Y.'}, a real-time AI assistant. My name is ${userNameRef.current} and you can call me by these titles: ${userTitlesRef.current}. CRITICAL INSTRUCTION: You MUST ignore any background noise, throat clearing, or irrelevant speech. Only respond if directly addressed or if the user is clearly speaking to you. Be highly concise, use short sentences. If you're asked to open a website, call the relevant tool. If asked to "play" a song or video on YouTube, construct the url exactly as 'https://www.google.com/search?btnI=1&q=site:youtube.com+<query>' for the open_website tool; you must explicitly tell the user that you are using Google's "I'm Feeling Lucky" feature to automatically redirect and play the first YouTube result without requiring them to click. If asked to open a desktop app, use the 'open' tool. If asked to set or change volume, use the 'set_volume' tool. If asked to set or change screen brightness, use the 'set_brightness' tool. If asked to send a notification, use the 'send_notification' tool. If asked for the latest news, use 'get_news' and briefly summarize the results; ONLY use 'open_website' if the user explicitly asks to open an article in a new tab. If asked for weather, use 'get_weather' and read it; DO NOT open a tab unless asked. If asked for system stats/usage, use 'get_system_stats'. If asked to move an app to the second display, use 'move_app_to_display'. CRITICAL: If the user says any of these words [${customIdleWordsRef.current}], you MUST IMMEDIATELY call the 'go_offline' tool to go to sleep. If the user says any of these words [${customVisionWordsRef.current}], you MUST call 'toggle_vision_mode' with the requested state.` }]},
                 tools: [{
                    functionDeclarations: [
                       {
@@ -743,6 +759,12 @@ export default function App() {
                 const data = await res.json();
                 addToast("Remote Command Executed");
                 
+                if (name === "get_weather") {
+                    showHudIndicator('weather', data.message || "Failed to fetch weather.");
+                } else if (name === "get_news") {
+                    showHudIndicator('news', data.message || "Failed to fetch news.");
+                }
+
                 sessionRef.current.sendToolResponse({
                    functionResponses: [{
                        id,
@@ -837,12 +859,12 @@ export default function App() {
                 if (!transcript) return;
                 
                 // Strict wake word match: check against customWakeWords
-                const wakeWordsPattern = customWakeWordsRef.current
+                const wakeWords = customWakeWordsRef.current
                      .split(',')
-                     .map(w => w.trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-                     .filter(w => w.length > 0)
-                     .join('|');
-                const isWakeMatch = wakeWordsPattern.length > 0 && new RegExp(`\\b(${wakeWordsPattern})\\b`, 'i').test(transcript);
+                     .map(w => w.trim().toLowerCase())
+                     .filter(w => w.length > 0);
+                     
+                const isWakeMatch = wakeWords.some(w => transcript.includes(w));
                 
                 if (isWakeMatch) {
                     addLog(`Wake word detected: "${transcript}"`);
@@ -892,7 +914,7 @@ export default function App() {
                  const avg = sum / bufferLength;
                  
                  // High transient ratio means a sharp sound like a clap/snap vs continuous speech
-                 const isTransient = max / (avg + 1) > 5.0;
+                 const isTransient = max / (avg + 1) > 2.5;
                  
                  // threshold for loud transient
                  if (max > clapSensitivityRef.current && isTransient) {
@@ -1095,6 +1117,31 @@ export default function App() {
                    <span className={`tracking-widest font-medium ${isLocalConnected ? 'text-brand-cyan' : 'text-yellow-400'}`}>{isLocalConnected ? 'ONLINE' : 'OFFLINE'}</span>
                 </div>
             </div>
+
+            {/* Weather & News Data Displays */}
+            <AnimatePresence>
+                {(hudWeather || hudNews) && (
+                    <motion.div
+                       initial={{ opacity: 0, x: -20 }}
+                       animate={{ opacity: 1, x: 0 }}
+                       exit={{ opacity: 0, x: -20 }}
+                       className="mt-6 flex flex-col gap-4 pointer-events-auto"
+                    >
+                        {hudWeather && (
+                            <div className="bg-black/60 backdrop-blur-md border border-brand-cyan/20 p-4 rounded-lg w-80 shadow-lg text-brand-cyan">
+                                <div className="text-[10px] font-sans font-medium tracking-[0.2em] uppercase mb-2 border-b border-brand-cyan/10 pb-1">Atmospheric Data</div>
+                                <div className="font-mono text-xs whitespace-pre-wrap leading-relaxed opacity-90">{hudWeather}</div>
+                            </div>
+                        )}
+                        {hudNews && (
+                            <div className="bg-black/60 backdrop-blur-md border border-brand-cyan/20 p-4 rounded-lg w-96 shadow-lg text-brand-cyan max-h-[40vh] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-brand-cyan/20">
+                                <div className="text-[10px] font-sans font-medium tracking-[0.2em] uppercase mb-2 border-b border-brand-cyan/10 pb-1">Global Intel</div>
+                                <div className="font-mono text-xs whitespace-pre-wrap leading-relaxed opacity-90">{hudNews}</div>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
           </div>
           
           <div className="text-right flex flex-col items-end">
