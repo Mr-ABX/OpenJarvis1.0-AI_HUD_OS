@@ -864,9 +864,7 @@ export default function App() {
                      .map(w => w.replace(/[^\w\s]/gi, '').trim().toLowerCase())
                      .filter(w => w.length > 0);
                      
-                const isWakeMatch = wakeWords.some(w => {
-                    return cleanTranscript === w || cleanTranscript.endsWith(` ${w}`) || cleanTranscript.startsWith(`${w} `);
-                });
+                const isWakeMatch = wakeWords.some(w => cleanTranscript === w);
                 
                 if (isWakeMatch) {
                     addLog(`Wake word detected: "${transcript}"`);
@@ -1027,7 +1025,8 @@ export default function App() {
   }, [visionMode, addLog, isConnected]);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden flex flex-col justify-center items-center">
+    <div className={`relative w-full h-screen overflow-hidden flex flex-col justify-center items-center ${isConnected ? 'screen-glitch' : ''}`}>
+      <div className="film-grain" />
       <AnimatePresence>
         {visionMode && (
           <motion.div 
@@ -1099,11 +1098,23 @@ export default function App() {
           className={`absolute inset-0 z-10 pointer-events-none transition-all duration-1000 ease-in-out origin-bottom-right ${visionMode ? 'scale-[0.2] -translate-x-6 -translate-y-28 opacity-80' : 'scale-100 translate-x-0 translate-y-0 opacity-100'}`} 
       />
 
+      <div className="absolute inset-0 pointer-events-none">
+          {/* Data Ring Visualizer */}
+          <div className={`absolute inset-0 pointer-events-none transition-all duration-1000 ease-in-out origin-bottom-right ${visionMode ? 'scale-[0.2] -translate-x-6 -translate-y-28 opacity-80' : 'scale-100 translate-x-0 translate-y-0 opacity-100'}`}>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                 <div className={`w-[600px] h-[600px] rounded-full border border-brand-cyan/10 border-t-brand-cyan/40 border-b-brand-cyan/20 animate-spin ${isConnected ? 'duration-[4s] scale-100' : 'duration-[20s] scale-95 opacity-50'} transition-all`} />
+              </div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                 <div className={`w-[450px] h-[450px] rounded-full border border-brand-cyan/5 border-l-brand-cyan/40 animate-spin -scale-x-100 ${isConnected ? 'duration-[6s]' : 'duration-[30s] opacity-30'} transition-all`} />
+              </div>
+          </div>
+      </div>
+
       <div className="absolute inset-0 z-20 flex flex-col justify-between p-8 pointer-events-none">
         
         <div className="flex justify-between items-start">
           <div className="flex flex-col gap-1">
-            <h1 className="text-brand-cyan tracking-[0.4em] font-bold text-2xl uppercase drop-shadow-[0_0_10px_rgba(14,165,233,0.4)]">
+            <h1 key={isConnected ? "on" : "off"} className="text-scramble text-brand-cyan tracking-[0.4em] font-bold text-2xl uppercase drop-shadow-[0_0_10px_rgba(14,165,233,0.4)]">
                {(voiceName === 'Fenrir' || voiceName === 'Charon') ? 'J.A.R.V.I.S.' : 'F.R.I.D.A.Y.'}
             </h1>
             <div className="flex flex-col gap-2 mt-3 font-mono text-[10px]">
@@ -1235,12 +1246,12 @@ export default function App() {
                  </motion.span>
              </div>
 
-             <div className="bg-brand-bg/40 backdrop-blur-md border border-brand-cyan/10 border-t-brand-cyan/30 p-5 rounded-lg shadow-2xl">
-                <div className="flex items-center gap-2 mb-3 text-brand-cyan/80 border-b border-brand-cyan/10 pb-2">
+             <div className="hud-panel p-5 rounded-lg border border-brand-cyan/20 border-t-brand-cyan/50">
+                <div className="flex items-center gap-2 mb-3 text-brand-cyan/80 border-b border-brand-cyan/10 pb-2 relative z-20">
                    <Terminal size={14} />
                    <span className="text-[10px] tracking-[0.3em] font-sans font-medium uppercase drop-shadow-[0_0_8px_rgba(14,165,233,0.5)]">System Event Log</span>
                 </div>
-                <div className="flex flex-col gap-1.5 font-mono text-[10px] text-zinc-300 opacity-90 max-h-32 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-brand-cyan/20">
+                <div className="flex flex-col gap-1.5 font-mono text-[10px] text-zinc-300 opacity-90 max-h-32 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-brand-cyan/20 relative z-20">
                    {logs.length === 0 && <span className="opacity-50">AWAITING INITIALIZATION...</span>}
                    {logs.map((log, i) => (
                        <span key={i} className="animate-in fade-in slide-in-from-left-2"><span className="text-brand-cyan/50 mr-2">&gt;</span>{log}</span>
