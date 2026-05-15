@@ -41,7 +41,7 @@ Run the frontend locally. Since it uses Vite, it works out-of-the-box using norm
    npx vite
    ```
 
-### 2. Configure Environment Variables
+### 3. Configure Environment Variables
 
 Create a `.env` file in the root of the project (if not present) and add your `GEMINI_API_KEY`:
 
