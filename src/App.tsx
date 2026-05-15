@@ -858,13 +858,15 @@ export default function App() {
                 const transcript = finalTranscript.toLowerCase().trim();
                 if (!transcript) return;
                 
-                // Strict wake word match: check against customWakeWords
+                const cleanTranscript = transcript.replace(/[^\w\s]/gi, '').trim();
                 const wakeWords = customWakeWordsRef.current
                      .split(',')
-                     .map(w => w.trim().toLowerCase())
+                     .map(w => w.replace(/[^\w\s]/gi, '').trim().toLowerCase())
                      .filter(w => w.length > 0);
                      
-                const isWakeMatch = wakeWords.some(w => transcript.includes(w));
+                const isWakeMatch = wakeWords.some(w => {
+                    return cleanTranscript === w || cleanTranscript.endsWith(` ${w}`) || cleanTranscript.startsWith(`${w} `);
+                });
                 
                 if (isWakeMatch) {
                     addLog(`Wake word detected: "${transcript}"`);
