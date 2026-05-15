@@ -864,7 +864,10 @@ export default function App() {
                      .map(w => w.replace(/[^\w\s]/gi, '').trim().toLowerCase())
                      .filter(w => w.length > 0);
                      
-                const isWakeMatch = wakeWords.some(w => cleanTranscript === w);
+                const isWakeMatch = wakeWords.some(w => {
+                    const regex = new RegExp(`\\b${w}\\b`, 'i');
+                    return regex.test(cleanTranscript);
+                });
                 
                 if (isWakeMatch) {
                     addLog(`Wake word detected: "${transcript}"`);
@@ -914,7 +917,7 @@ export default function App() {
                  const avg = sum / bufferLength;
                  
                  // High transient ratio means a sharp sound like a clap/snap vs continuous speech
-                 const isTransient = max / (avg + 1) > 2.5;
+                 const isTransient = max / (avg + 1) > 6.0;
                  
                  // threshold for loud transient
                  if (max > clapSensitivityRef.current && isTransient) {
